@@ -1,2 +1,5 @@
 # jangan track secrets secara plain — sudah di-handle lewat encrypted file
 dot_config/zsh/secrets.zsh
+
+# repo documentation, bukan dotfile
+README.md
