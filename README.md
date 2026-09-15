@@ -7,7 +7,7 @@ Managed with [chezmoi](https://chezmoi.io). Secrets encrypted with [age](https:/
 ## Quick start on a new machine
 
 ```sh
-bash <(curl -fsSL https://raw.githubusercontent.com/upe-tinkerly-up/dotfiles/main/bootstrap.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/upe-tinkerly-up/dotfiles/master/bootstrap.sh)
 ```
 
 This opens an interactive TUI checklist where you pick exactly which groups to install.
