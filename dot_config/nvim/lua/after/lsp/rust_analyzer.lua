@@ -1,0 +1,53 @@
+-- return {
+--   settings = {
+--     ["rust-analyzer"] = {
+--       cargo = {
+--         allFeatures = true,
+--         loadOutDirsFromCheck = true,
+--         runBuildScripts = true,
+--       },
+--       checkOnSave = {
+--         allFeatures = true,
+--         command = "clippy",
+--         extraArgs = { "--no-deps" },
+--       },
+--       procMacro = {
+--         enable = true,
+--         ignored = {
+--           ["async-trait"] = { "async_trait" },
+--           ["napi-derive"] = { "napi" },
+--           ["async-recursion"] = { "async_recursion" },
+--         },
+--       },
+--       completion = {
+--         autoimport = { enable = true },
+--         postfix = { enable = true },
+--         privateEditable = { enable = true },
+--       },
+--       assist = {
+--         importGranularity = "module",
+--         importPrefix = "self",
+--       },
+--       typing = {
+--         autoClosingAngleBrackets = { enable = true },
+--       },
+--       imports = {
+--         granularity = { group = "module" },
+--         prefix = "self",
+--       },
+--       lens = {
+--         enable = true,
+--         run = { enable = true },
+--         debug = { enable = true },
+--         implementations = { enable = true },
+--         references = {
+--           adt = { enable = true },
+--           enumVariant = { enable = true },
+--           method = { enable = true },
+--           trait = { enable = true },
+--         },
+--         updateTest = { enable = true },
+--       },
+--     },
+--   },
+-- }

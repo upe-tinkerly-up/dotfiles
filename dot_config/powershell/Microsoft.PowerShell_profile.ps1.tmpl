@@ -1,0 +1,9 @@
+# PowerShell profile for Windows
+
+# Aliases
+Set-Alias ls Get-ChildItem
+Set-Alias grep Select-String
+
+# bun
+$env:BUN_INSTALL="$HOME\.bun"
+$env:PATH="$env:BUN_INSTALL\bin;$env:PATH;$HOME\bin"
