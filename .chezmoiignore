@@ -3,3 +3,13 @@ dot_config/zsh/secrets.zsh
 
 # repo documentation, bukan dotfile
 README.md
+
+# opencode dependencies, bukan config
+dot_config/opencode/node_modules
+dot_config/opencode/package.json
+dot_config/opencode/package-lock.json
+
+# spicetify managed externally via CLI
+dot_config/spicetify/Extensions
+dot_config/spicetify/Themes
+dot_config/spicetify/CustomApps
