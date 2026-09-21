@@ -208,6 +208,13 @@ done
 # ---------------------------------------------------------------------------
 [[ $EUID -eq 0 ]] && die "Do not run as root. The script uses sudo internally."
 
+# Detect WSL
+IS_WSL=false
+if grep -qi microsoft /proc/version &>/dev/null 2>&1; then
+  IS_WSL=true
+  warn "WSL detected — some paths/tools may differ from native Linux"
+fi
+
 if ! has pacman; then
   die "pacman not found. This script is for Arch-based systems only."
 fi
@@ -887,9 +894,15 @@ else
     info "TPM — already installed, skip"
   else
     info "Installing TPM (Tmux Plugin Manager)..."
+    mkdir -p "$HOME/.tmux/plugins"
     git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm >> "$LOG_FILE" 2>&1 \
       && log "TPM installed to ~/.tmux/plugins/tpm" \
-      || warn "TPM installation failed — manual clone: git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm"
+      || { warn "TPM installation failed"; warn "Manual install: git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm"; }
+  fi
+  
+  # Fix permissions (WSL sometimes has issues)
+  if [[ -d "$HOME/.tmux/plugins/tpm" ]]; then
+    chmod -R u+rwx "$HOME/.tmux/plugins/tpm" 2>/dev/null || true
   fi
 
   info "To activate TPM plugins:"
