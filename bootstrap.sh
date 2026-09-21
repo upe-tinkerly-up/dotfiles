@@ -158,6 +158,7 @@ SKIP_NODEJS=false
 SKIP_GOLANG=false
 SKIP_RUST=false
 SKIP_NEOVIM=false
+SKIP_TMUX=false
 SKIP_DOTFILES=false
 
 print_help() {
@@ -176,6 +177,7 @@ Options:
   --skip-golang        Skip gvm + Go (stable)
   --skip-rust          Skip rustup + Rust stable
   --skip-neovim        Skip neovim + Mason LSP/tools headless install
+  --skip-tmux          Skip tmux + TPM plugins (vim-tmux-navigator, resurrect, continuum)
   --skip-dotfiles      Skip chezmoi init + apply
   -h, --help           Show this message
 EOF
@@ -194,6 +196,7 @@ for arg in "$@"; do
     --skip-golang)     SKIP_GOLANG=true ;;
     --skip-rust)       SKIP_RUST=true ;;
     --skip-neovim)     SKIP_NEOVIM=true ;;
+    --skip-tmux)       SKIP_TMUX=true ;;
     --skip-dotfiles)   SKIP_DOTFILES=true ;;
     -h|--help)         print_help; exit 0 ;;
     *) die "Unknown flag: $arg  — run with --help for usage." ;;
@@ -300,6 +303,7 @@ if [[ "$NON_INTERACTIVE" == false ]]; then
     L_GO="gvm + Go (stable, latest)$(_status go)"
     L_RUST="rustup + Rust stable + cargo$(_status rustc)"
     L_NVIM="Neovim + Mason LSPs + tools (needs node/go)$(_status nvim neovim)"
+    L_TMUX="tmux + TPM plugins (vim-tmux-navigator, resurrect, continuum)$(_status tmux)"
     L_DOTS="chezmoi init + apply from GitHub (needs age key)"
 
     CHOICES=$(whiptail \
@@ -317,6 +321,7 @@ if [[ "$NON_INTERACTIVE" == false ]]; then
       "golang"    "$L_GO"       ON \
       "rust"      "$L_RUST"     ON \
       "neovim"    "$L_NVIM"     ON \
+      "tmux"      "$L_TMUX"     ON \
       "dotfiles"  "$L_DOTS"     ON \
       3>&1 1>&2 2>&3) || { info "Cancelled."; exit 0; }
 
@@ -324,6 +329,14 @@ if [[ "$NON_INTERACTIVE" == false ]]; then
     [[ "$CHOICES" != *'"fish"'*      ]] && SKIP_FISH=true
     [[ "$CHOICES" != *'"zsh"'*       ]] && SKIP_ZSH=true
     [[ "$CHOICES" != *'"terminals"'* ]] && SKIP_TERMINALS=true
+    [[ "$CHOICES" != *'"cli"'*       ]] && SKIP_CLI_TOOLS=true
+    [[ "$CHOICES" != *'"hyprland"'*  ]] && SKIP_HYPRLAND=true
+    [[ "$CHOICES" != *'"nodejs"'*    ]] && SKIP_NODEJS=true
+    [[ "$CHOICES" != *'"golang"'*    ]] && SKIP_GOLANG=true
+    [[ "$CHOICES" != *'"rust"'*      ]] && SKIP_RUST=true
+    [[ "$CHOICES" != *'"neovim"'*    ]] && SKIP_NEOVIM=true
+    [[ "$CHOICES" != *'"tmux"'*      ]] && SKIP_TMUX=true
+    [[ "$CHOICES" != *'"dotfiles"'*  ]] && SKIP_DOTFILES=true
     [[ "$CHOICES" != *'"cli"'*       ]] && SKIP_CLI_TOOLS=true
     [[ "$CHOICES" != *'"hyprland"'*  ]] && SKIP_HYPRLAND=true
     [[ "$CHOICES" != *'"nodejs"'*    ]] && SKIP_NODEJS=true
@@ -407,9 +420,10 @@ _plan "cli-tools" "$SKIP_CLI_TOOLS"
 _plan "hyprland"  "$SKIP_HYPRLAND"
 _plan "nodejs"    "$SKIP_NODEJS"
 _plan "golang"    "$SKIP_GOLANG"
-_plan "rust"      "$SKIP_RUST"
-_plan "neovim"    "$SKIP_NEOVIM"
-_plan "dotfiles"  "$SKIP_DOTFILES"
+_plan "rust"       "$SKIP_RUST"
+_plan "neovim"     "$SKIP_NEOVIM"
+_plan "tmux"       "$SKIP_TMUX"
+_plan "dotfiles"   "$SKIP_DOTFILES"
 echo ""
 
 if [[ "$NON_INTERACTIVE" == false ]]; then
@@ -851,6 +865,40 @@ else
     || warn "Mason headless timed out — non-fatal. Open nvim manually to let Mason finish."
 
   log "neovim done"; mark_installed "neovim"
+fi
+
+# ---------------------------------------------------------------------------
+# Step 11: Tmux + TPM
+# ---------------------------------------------------------------------------
+step "Step 11/9 — Tmux + TPM"
+
+if [[ "$SKIP_TMUX" == true ]]; then
+  info "tmux — skipped"; mark_skipped "tmux"
+else
+  # Install tmux
+  if is_installed tmux; then
+    info "tmux — already installed, skip"
+  else
+    pacman_install tmux
+  fi
+
+  # Install TPM (Tmux Plugin Manager)
+  if [[ -d "$HOME/.tmux/plugins/tpm" ]]; then
+    info "TPM — already installed, skip"
+  else
+    info "Installing TPM (Tmux Plugin Manager)..."
+    git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm >> "$LOG_FILE" 2>&1 \
+      && log "TPM installed to ~/.tmux/plugins/tpm" \
+      || warn "TPM installation failed — manual clone: git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm"
+  fi
+
+  info "To activate TPM plugins:"
+  info "  1. Start tmux: tmux"
+  info "  2. Press: Ctrl+a, I (capital I)"
+  info "  3. Wait 2-3 seconds for plugins to download"
+  info "Plugins: vim-tmux-navigator, tmux-resurrect, tmux-continuum"
+
+  log "tmux done"; mark_installed "tmux"
 fi
 
 # ---------------------------------------------------------------------------
