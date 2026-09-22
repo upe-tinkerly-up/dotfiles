@@ -1,0 +1,223 @@
+#!/usr/bin/env bash
+# vault-db-x: Enhanced cross-platform vault CLI
+# Support untuk sub-context, project linking, multi-device
+
+set -euo pipefail
+
+# Config
+VAULT_PATH="${VAULT_PATH:-$HOME/myfolder/.vault-db}"
+VAULT_DB="$VAULT_PATH/vault.db"
+VAULT_EXPORT="${VAULT_PATH%/.vault-db}/obsidian-vault"
+DEVICE_NAME="${DEVICE_NAME:-local}"
+
+# Helpers
+log_success() { echo "✓ $*"; }
+log_error() { echo "✗ $*" >&2; exit 1; }
+
+check_db() {
+  [ -f "$VAULT_DB" ] || log_error "Database not found at $VAULT_DB"
+}
+
+# BASIC COMMANDS (unchanged)
+cmd_list_notes() {
+  check_db
+  echo "Recent Notes:"
+  sqlite3 "$VAULT_DB" "SELECT id, title, type, category, parent_context FROM notes WHERE status='active' ORDER BY updated_at DESC LIMIT 10;"
+}
+
+cmd_search() {
+  check_db
+  local keyword="$1"
+  echo "Search results for: $keyword"
+  sqlite3 "$VAULT_DB" "SELECT id, title, category, parent_context FROM notes WHERE (content LIKE '%$keyword%' OR title LIKE '%$keyword%') AND status='active' LIMIT 20;"
+}
+
+cmd_tasks() {
+  check_db
+  echo "Active Tasks:"
+  sqlite3 "$VAULT_DB" "SELECT n.id, n.title, t.due_date, n.project_folder FROM notes n LEFT JOIN tasks t ON n.id=t.note_id WHERE n.type='task' AND n.status='active' ORDER BY t.due_date, n.updated_at DESC;"
+}
+
+cmd_stats() {
+  check_db
+  echo "Vault Statistics:"
+  sqlite3 "$VAULT_DB" << EOF
+.mode column
+.headers on
+SELECT 'Total Notes' as stat, COUNT(*) as count FROM notes WHERE status='active'
+UNION ALL
+SELECT 'Active Tasks', COUNT(*) FROM notes WHERE type='task' AND status='active'
+UNION ALL
+SELECT 'Learning Contexts', COUNT(DISTINCT parent_context) FROM notes WHERE type='learning' AND parent_context IS NOT NULL
+UNION ALL
+SELECT 'Projects', COUNT(*) FROM projects;
+EOF
+}
+
+# NEW COMMANDS: SUB-CONTEXT SUPPORT
+cmd_add_note_sub() {
+  check_db
+  local title="$1" type="$2" category="$3" parent_context="$4" subcategory="$5" content="$6"
+  
+  result=$(sqlite3 "$VAULT_DB" "INSERT INTO notes (title, content, type, category, parent_context, subcategory, device_origin, created_by) VALUES ('$title', '$content', '$type', '$category', '$parent_context', '$subcategory', '$DEVICE_NAME', 'cli'); SELECT last_insert_rowid();")
+  log_success "Note created with ID: $result (context: $parent_context/$subcategory)"
+}
+
+cmd_list_contexts() {
+  check_db
+  echo "Available Contexts:"
+  sqlite3 "$VAULT_DB" "SELECT parent_context, category, COUNT(*) as notes FROM notes WHERE parent_context IS NOT NULL AND status='active' GROUP BY parent_context ORDER BY parent_context;"
+}
+
+cmd_context_info() {
+  check_db
+  local context="$1"
+  echo "Context: $context"
+  sqlite3 "$VAULT_DB" << EOF
+.mode column
+.headers on
+SELECT subcategory, COUNT(*) as notes FROM notes 
+WHERE parent_context='$context' AND status='active'
+GROUP BY subcategory;
+EOF
+}
+
+cmd_context_switch() {
+  local context="$1"
+  echo "$context" > "$VAULT_PATH/.current_context"
+  log_success "Switched to context: $context"
+}
+
+cmd_context_current() {
+  if [ -f "$VAULT_PATH/.current_context" ]; then
+    cat "$VAULT_PATH/.current_context"
+  else
+    echo "No context selected"
+  fi
+}
+
+# NEW COMMANDS: PROJECT LINKING
+cmd_add_note_project() {
+  check_db
+  local title="$1" type="$2" category="$3" project_folder="$4" content="$5"
+  
+  result=$(sqlite3 "$VAULT_DB" "INSERT INTO notes (title, content, type, category, project_folder, device_origin) VALUES ('$title', '$content', '$type', '$category', '$project_folder', '$DEVICE_NAME'); SELECT last_insert_rowid();")
+  
+  # Also add task if it's a task type
+  if [ "$type" = "task" ]; then
+    sqlite3 "$VAULT_DB" "INSERT INTO tasks (note_id, project_folder) VALUES ($result, '$project_folder');"
+  fi
+  
+  log_success "Project note created with ID: $result (linked to: $project_folder)"
+}
+
+cmd_project_notes() {
+  check_db
+  local project_folder="$1"
+  echo "Notes for project: $project_folder"
+  sqlite3 "$VAULT_DB" "SELECT id, title, type, priority FROM notes WHERE project_folder='$project_folder' AND status='active' ORDER BY priority DESC, updated_at DESC;"
+}
+
+# CONFIGURATION COMMANDS
+cmd_config_show() {
+  echo "=== Vault Configuration ==="
+  echo "Vault DB: $VAULT_DB"
+  echo "Vault Export: $VAULT_EXPORT"
+  echo "Device Name: $DEVICE_NAME"
+  
+  if [ -f "$VAULT_PATH/.vault-config" ]; then
+    echo ""
+    echo "=== Custom Config ==="
+    cat "$VAULT_PATH/.vault-config"
+  fi
+}
+
+cmd_config_init() {
+  echo "=== Vault Configuration Setup ==="
+  
+  read -p "Device name (cachy/windows/hp): " device_name
+  DEVICE_NAME="$device_name"
+  
+  mkdir -p "$VAULT_PATH"
+  
+  cat > "$VAULT_PATH/.vault-config" << EOF
+# Vault Configuration
+device_name=$device_name
+vault_path=$VAULT_PATH
+export_path=$VAULT_EXPORT
+sync_service=dropbox
+EOF
+  
+  log_success "Configuration saved to $VAULT_PATH/.vault-config"
+}
+
+# EXPORT COMMAND
+cmd_export() {
+  check_db
+  python3 "$VAULT_PATH/export-to-markdown-x.py"
+}
+
+# MAIN
+case "${1:-help}" in
+  # Basic
+  list-notes|ln)      cmd_list_notes ;;
+  search|s)           cmd_search "${2:-}" ;;
+  tasks|t)            cmd_tasks ;;
+  stats)              cmd_stats ;;
+  export|exp)         cmd_export ;;
+  
+  # Sub-context
+  add-note-sub|ans)   cmd_add_note_sub "$2" "$3" "$4" "$5" "$6" "$7" ;;
+  list-contexts|lc)   cmd_list_contexts ;;
+  context-info|ci)    cmd_context_info "${2:-}" ;;
+  context-switch|cs)  cmd_context_switch "${2:-}" ;;
+  context-current|cc) cmd_context_current ;;
+  
+  # Project
+  add-note-project|anp) cmd_add_note_project "$2" "$3" "$4" "$5" "$6" ;;
+  project-notes|pn)   cmd_project_notes "${2:-}" ;;
+  
+  # Config
+  config)             cmd_config_"${2:-show}" ;;
+  
+  help|-h|--help|*)
+    cat << HELP
+vault-db-x: Enhanced Obsidian SQLite Vault CLI
+
+Basic Commands:
+  list-notes (ln)              List recent notes
+  search (s) <keyword>         Search notes
+  tasks (t)                    Show active tasks
+  stats                        Vault statistics
+  export (exp)                 Export to markdown
+
+Sub-Context Commands:
+  add-note-sub (ans) <args>    Add note with context
+    Usage: add-note-sub "Title" "type" "category" "context" "subcategory" "content"
+    Example: add-note-sub "Setup" "learning" "learning" "rust-esp32" "setup" "..."
+  
+  list-contexts (lc)           List all contexts
+  context-info (ci) <context>  Show context details
+  context-switch (cs) <ctx>    Switch active context
+  context-current (cc)         Show current context
+
+Project Commands:
+  add-note-project (anp) <args> Add note linked to project
+    Usage: add-note-project "Title" "type" "category" "~/path/to/project" "content"
+  
+  project-notes (pn) <path>    Show notes for project
+
+Configuration:
+  config show                  Show current config
+  config init                  Initialize config
+
+Examples:
+  vault-db-x add-note-sub "Blink LED" "learning" "learning" "rust-esp32" "basics" "..."
+  vault-db-x search "rust"
+  vault-db-x list-contexts
+  vault-db-x context-switch rust-esp32
+  vault-db-x project-notes ~/myfolder/work/project-a
+
+HELP
+    ;;
+esac

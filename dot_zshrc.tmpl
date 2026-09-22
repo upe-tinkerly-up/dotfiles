@@ -1,10 +1,3 @@
-source /usr/share/cachyos-zsh-config/cachyos-config.zsh
-
-{{- if eq .chezmoi.os "linux" }}
-[[ -s "$HOME/.gvm/scripts/gvm" ]] && source "$HOME/.gvm/scripts/gvm"
+{{ if eq .chezmoi.os "linux" -}}
+alias vault="vault-db-x"
 {{- end }}
-
-# bun
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
-export PATH="$HOME/bin:$PATH"
