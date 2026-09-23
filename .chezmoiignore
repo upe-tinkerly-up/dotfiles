@@ -13,3 +13,9 @@ dot_config/opencode/package-lock.json
 dot_config/spicetify/Extensions
 dot_config/spicetify/Themes
 dot_config/spicetify/CustomApps
+
+# rust build artifacts
+myfolder/vault-rs/target
+
+# local db cache (never sync)
+myfolder/.vault-db
