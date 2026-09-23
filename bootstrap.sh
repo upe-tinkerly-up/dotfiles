@@ -160,6 +160,7 @@ SKIP_RUST=false
 SKIP_NEOVIM=false
 SKIP_TMUX=false
 SKIP_DOTFILES=false
+SKIP_VAULT=false
 
 print_help() {
   cat <<'EOF'
@@ -179,6 +180,7 @@ Options:
   --skip-neovim        Skip neovim + Mason LSP/tools headless install
   --skip-tmux          Skip tmux + TPM plugins (vim-tmux-navigator, resurrect, continuum)
   --skip-dotfiles      Skip chezmoi init + apply
+  --skip-vault         Skip vault CLI build + rclone setup
   -h, --help           Show this message
 EOF
 }
@@ -198,6 +200,7 @@ for arg in "$@"; do
     --skip-neovim)     SKIP_NEOVIM=true ;;
     --skip-tmux)       SKIP_TMUX=true ;;
     --skip-dotfiles)   SKIP_DOTFILES=true ;;
+    --skip-vault)      SKIP_VAULT=true ;;
     -h|--help)         print_help; exit 0 ;;
     *) die "Unknown flag: $arg  — run with --help for usage." ;;
   esac
@@ -312,12 +315,13 @@ if [[ "$NON_INTERACTIVE" == false ]]; then
     L_NVIM="Neovim + Mason LSPs + tools (needs node/go)$(_status nvim neovim)"
     L_TMUX="tmux + TPM plugins (vim-tmux-navigator, resurrect, continuum)$(_status tmux)"
     L_DOTS="chezmoi init + apply from GitHub (needs age key)"
+    L_VAULT="vault CLI build + rclone (Obsidian sync)$(_status vault)"
 
     CHOICES=$(whiptail \
       --title "bootstrap.sh — Select groups to install" \
       --checklist \
       "Space = toggle  |  Enter = confirm\nItems marked [installed] will be skipped automatically." \
-      28 74 12 \
+      28 74 13 \
       "fonts"     "$L_FONTS"    ON \
       "fish"      "$L_FISH"     ON \
       "zsh"       "$L_ZSH"      ON \
@@ -330,6 +334,7 @@ if [[ "$NON_INTERACTIVE" == false ]]; then
       "neovim"    "$L_NVIM"     ON \
       "tmux"      "$L_TMUX"     ON \
       "dotfiles"  "$L_DOTS"     ON \
+      "vault"     "$L_VAULT"    ON \
       3>&1 1>&2 2>&3) || { info "Cancelled."; exit 0; }
 
     [[ "$CHOICES" != *'"fonts"'*     ]] && SKIP_FONTS=true
@@ -369,6 +374,7 @@ if [[ "$NON_INTERACTIVE" == false ]]; then
     printf "  %-3s %-12s %s\n" "9"  "rust"         "$(_status rustc)"
     printf "  %-3s %-12s %s\n" "10" "neovim"       "$(_status nvim neovim)"
     printf "  %-3s %-12s %s\n" "11" "dotfiles"     "(chezmoi)"
+    printf "  %-3s %-12s %s\n" "12" "vault"        "(vault-cli + rclone)"
     echo ""
     echo "  Enter numbers separated by spaces, or press Enter for ALL."
     read -rp "  Your choice: " RAW_CHOICE
@@ -377,7 +383,7 @@ if [[ "$NON_INTERACTIVE" == false ]]; then
       # Deselect all first
       SKIP_FONTS=true; SKIP_FISH=true; SKIP_ZSH=true; SKIP_TERMINALS=true
       SKIP_CLI_TOOLS=true; SKIP_HYPRLAND=true; SKIP_NODEJS=true
-      SKIP_GOLANG=true; SKIP_RUST=true; SKIP_NEOVIM=true; SKIP_DOTFILES=true
+      SKIP_GOLANG=true; SKIP_RUST=true; SKIP_NEOVIM=true; SKIP_DOTFILES=true; SKIP_VAULT=true
       for n in $RAW_CHOICE; do
         case "$n" in
           1)  SKIP_FONTS=false ;;
@@ -391,6 +397,7 @@ if [[ "$NON_INTERACTIVE" == false ]]; then
           9)  SKIP_RUST=false ;;
           10) SKIP_NEOVIM=false ;;
           11) SKIP_DOTFILES=false ;;
+          12) SKIP_VAULT=false ;;
           *) warn "Unknown number: $n — ignored" ;;
         esac
       done
@@ -431,6 +438,7 @@ _plan "rust"       "$SKIP_RUST"
 _plan "neovim"     "$SKIP_NEOVIM"
 _plan "tmux"       "$SKIP_TMUX"
 _plan "dotfiles"   "$SKIP_DOTFILES"
+_plan "vault"      "$SKIP_VAULT"
 echo ""
 
 if [[ "$NON_INTERACTIVE" == false ]]; then
@@ -874,10 +882,66 @@ else
   log "neovim done"; mark_installed "neovim"
 fi
 
-# ---------------------------------------------------------------------------
-# Step 11: Tmux + TPM
-# ---------------------------------------------------------------------------
-step "Step 11/9 — Tmux + TPM"
+step "Step 10/9 — Vault CLI + rclone (Obsidian sync)"
+
+if [[ "$SKIP_VAULT" == true ]]; then
+  info "vault-cli — skipped"; mark_skipped "vault-cli"
+else
+  # --- Rust check (needed to build vault) ---
+  if ! has rustc; then
+    # Source cargo env if available but rustc not in PATH
+    [[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env" || true
+  fi
+  if ! has rustc; then
+    warn "Rust not installed — vault build will fail. Install Rust first (--skip-rust=false)"
+  else
+    info "Building vault CLI from source..."
+    if [[ -d "$HOME/myfolder/vault-rs" ]]; then
+      cd "$HOME/myfolder/vault-rs"
+      cargo build --release >> "$LOG_FILE" 2>&1
+      mkdir -p "$HOME/.local/bin"
+      cp target/release/vault "$HOME/.local/bin/vault"
+      log "vault binary built and installed to ~/.local/bin/vault"
+    else
+      warn "vault-rs source not found at ~/myfolder/vault-rs — skipping build"
+    fi
+  fi
+
+  # --- rclone config ---
+  if has rclone; then
+    info "rclone already installed"
+  else
+    info "Installing rclone..."
+    if pacman -Si rclone &>/dev/null 2>&1; then
+      pacman_install rclone
+    else
+      paru_install rclone
+    fi
+  fi
+
+  # rclone config reconnect (interactive - needs browser)
+  if [[ -f "$HOME/.config/rclone/rclone.conf" ]]; then
+    info "rclone config found — testing connection..."
+    if rclone ls vault: &>> "$LOG_FILE"; then
+      log "rclone Google Drive connection OK"
+    else
+      warn "rclone token expired — run 'rclone config reconnect vault:' manually after bootstrap"
+    fi
+  else
+    warn "No rclone config found — run 'rclone config create vault: drive' manually"
+  fi
+
+  # --- Sync test ---
+  if has vault && has rclone; then
+    info "Running initial vault export + sync test..."
+    vault export >> "$LOG_FILE" 2>&1
+    rclone sync ~/myfolder/obsidian-vault vault:myfolder/obsidian-vault >> "$LOG_FILE" 2>&1 \
+      && log "Initial vault export + sync OK" \
+      || warn "Initial sync had issues — check $LOG_FILE"
+  fi
+
+  log "vault-cli done"; mark_installed "vault-cli"
+fi
 
 if [[ "$SKIP_TMUX" == true ]]; then
   info "tmux — skipped"; mark_skipped "tmux"
