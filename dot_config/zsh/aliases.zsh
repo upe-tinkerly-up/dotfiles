@@ -59,3 +59,10 @@ alias dotfiles='git --git-dir=$HOME/.dotfiles --work-tree=$HOME'
 # =========================================================
 
 alias stream='mpv av://v4l2:/dev/video4 --fullscreen --demuxer-lavf-o=input_format=mjpeg,framerate=30 --profile=low-latency --untimed'
+
+# =========================================================
+# Vault CLI
+# =========================================================
+alias va='vault ans'
+alias vs='vault s'
+alias vt='v-today'
