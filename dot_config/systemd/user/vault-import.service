@@ -1,0 +1,8 @@
+[Unit]
+Description=Import Obsidian vault to SQLite DB
+After=syncthing.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/upe/.local/bin/vault import
+WorkingDirectory=/home/upe

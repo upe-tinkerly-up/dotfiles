@@ -1,0 +1,11 @@
+[Unit]
+Description=Run vault import every 5 minutes
+Requires=vault-import.service
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
