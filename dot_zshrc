@@ -1,0 +1,20 @@
+source /usr/share/cachyos-zsh-config/cachyos-config.zsh
+[[ -s "$HOME/.gvm/scripts/gvm" ]] && source "$HOME/.gvm/scripts/gvm"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+export PATH="$HOME/bin:$PATH"
+
+# Obsidian Vault CLI alias
+alias vault="vault"
+export PATH=/home/upe/.local/bin:/home/upe/bin:/home/upe/.bun/bin:/home/upe/.gvm/pkgsets/go1.27.0/global/bin:/home/upe/.gvm/gos/go1.27.0/bin:/home/upe/.gvm/pkgsets/go1.27.0/global/overlay/bin:/home/upe/.gvm/bin:/home/upe/.cargo/bin:/home/upe/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin:/home/upe/.config/nvm/versions/node/v24.20.0/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl:/usr/lib/rustup/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/sbin:/sbin:/bin:/home/upe/.hermes/bin:~/.local/bin
+
+# Vault Shorthand Aliases
+alias vls="vault list"
+alias vsearch="vault search"
+alias vts="vault tasks"
+alias vst="vault stats"
+alias vtoday="vault today"
+alias vexp="vault export"
+alias vsync="vault sync"

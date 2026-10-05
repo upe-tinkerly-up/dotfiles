@@ -15,6 +15,12 @@ export NVM_DIR="$HOME/.config/nvm"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 
 # GVM (Linux/WSL only)
-{{- if eq .chezmoi.os "linux" }}
 [[ -s "$HOME/.gvm/scripts/gvm" ]] && source "$HOME/.gvm/scripts/gvm"
-{{- end }}
+
+# Vault aliases
+alias vsync='rclone sync /home/upe/obsidian-vault/ gdrive:obsidian-vault/ '
+alias vbackup='/home/upe/scripts/backup_vault.sh'
+alias vpull='vault sync-pull'
+alias vlist='vault list -l 15'
+alias vsearch='vault search'
+alias vtoday="/home/upe/scripts/generate_daily.sh"
