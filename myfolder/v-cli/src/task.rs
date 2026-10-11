@@ -1,96 +1,84 @@
-//! Task per-project, disimpan sebagai checkbox markdown di
-//! vault 10_Projects/<nama>/tasks.md (kompatibel Obsidian & Dataview).
+//! Task per-project: 1 task = 1 file di 10_Projects/<nama>/tasks/<slug>.md,
+//! dibuat dari template `task.md`. Status dilacak via frontmatter `status:`.
 
-use crate::project;
-use crate::util::{append_to_file, vault_root, write_file};
+use crate::project::{self, Project};
+use crate::util::{load_template, slugify, vault_root, write_file};
 use anyhow::Result;
 use chrono::Local;
+use std::collections::HashMap;
 
-fn ensure_header(path: &std::path::Path, project_name: &str) -> Result<()> {
-    if !path.exists() {
-        let header = format!(
-            "---\ntype: tasks\nproject: {project_name}\n---\n\n# Tasks — {project_name}\n\n"
-        );
-        write_file(path, &header)?;
-    }
-    Ok(())
+fn tasks_dir(p: &Project) -> std::path::PathBuf {
+    p.vault_dir().join("tasks")
 }
 
-/// Tambah task ke project saat ini.
+/// Tambah task sebagai file dari template task.md.
 pub fn add(title: &str) -> Result<()> {
     if title.trim().is_empty() {
         anyhow::bail!("judul task kosong. Pakai: v task \"judul\"");
     }
     let p = project::require()?;
-    let file = p.vault_tasks_file();
-    ensure_header(&file, &p.name)?;
+    let slug = slugify(title);
+    let file = tasks_dir(&p).join(format!("{slug}.md"));
+    if file.exists() {
+        anyhow::bail!("task '{title}' sudah ada: {}", file.display());
+    }
     let date = Local::now().format("%Y-%m-%d").to_string();
-    let line = format!("- [ ] {title}  ➕ {date}\n");
-    append_to_file(&file, &line)?;
-    println!("✓ task ditambahkan ke {}: {title}", p.name);
+    let mut vars = HashMap::new();
+    vars.insert("TITLE", title.to_string());
+    vars.insert("PROJECT", p.name.clone());
+    vars.insert("DATE", date.clone());
+    vars.insert("CONTENT", String::new());
+    // kompat placeholder lama
+    vars.insert("CONTEXT", p.name.clone());
+    vars.insert("SUBCATEGORY", String::new());
+
+    let body = load_template("task", &vars).unwrap_or_else(|| {
+        format!("---\ntitle: \"{title}\"\ntype: task\nproject: {}\nstatus: todo\ncreated: {date}\n---\n\n# {title}\n", p.name)
+    });
+    write_file(&file, &body)?;
+    println!("✓ task dibuat: {} ({})", title, file.display());
     Ok(())
 }
 
-/// Tandai task ke-N (dihitung dari task belum selesai, urut muncul) sebagai selesai.
+/// Tandai task ke-N (dari daftar task aktif project ini) selesai:
+/// ubah frontmatter `status:` -> done.
 pub fn done(number: usize) -> Result<()> {
     let p = project::require()?;
-    let file = p.vault_tasks_file();
-    if !file.exists() {
-        anyhow::bail!("belum ada task untuk project {}", p.name);
-    }
-    let content = std::fs::read_to_string(&file)?;
-    let mut open_idx = 0usize;
-    let mut done_line: Option<String> = None;
+    let active = active_tasks(&tasks_dir(&p))?;
+    let (path, title) = active
+        .get(number - 1)
+        .ok_or_else(|| anyhow::anyhow!("task nomor {number} tidak ditemukan (lihat `v tasks --here`)"))?;
+    let content = std::fs::read_to_string(path)?;
     let date = Local::now().format("%Y-%m-%d").to_string();
-    let new: String = content
-        .lines()
-        .map(|line| {
-            if line.trim_start().starts_with("- [ ]") {
-                open_idx += 1;
-                if open_idx == number {
-                    let marked = line.replacen("- [ ]", "- [x]", 1);
-                    let marked = format!("{marked}  ✅ {date}");
-                    done_line = Some(marked.clone());
-                    return marked;
-                }
-            }
-            line.to_string()
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    match done_line {
-        Some(l) => {
-            let new = if content.ends_with('\n') { format!("{new}\n") } else { new };
-            write_file(&file, &new)?;
-            println!("✓ selesai: {}", l.trim());
-        }
-        None => anyhow::bail!("task nomor {number} tidak ditemukan (lihat `v tasks --here`)"),
-    }
+    let new = set_frontmatter_status(&content, "done", &date);
+    write_file(path, &new)?;
+    println!("✓ selesai: {title}");
     Ok(())
 }
 
-/// Daftar task aktif. `here=true` hanya project saat ini; else semua di 10_Projects.
+/// Daftar task aktif. `here` = hanya project saat ini; else semua project.
 pub fn list(here: bool) -> Result<()> {
     if here {
         let p = project::require()?;
-        print_tasks_file(&p.vault_tasks_file(), &p.name)?;
+        let active = active_tasks(&tasks_dir(&p))?;
+        print_list(&p.name, &active);
         return Ok(());
     }
-    // semua project
     let projects_dir = vault_root().join("10_Projects");
     if !projects_dir.exists() {
         println!("(belum ada 10_Projects)");
         return Ok(());
     }
     let mut any = false;
-    for entry in walk_md(&projects_dir) {
-        if entry.file_name().map(|n| n == "tasks.md").unwrap_or(false) {
-            let name = entry
-                .parent()
-                .and_then(|p| p.file_name())
-                .map(|n| n.to_string_lossy().to_string())
-                .unwrap_or_default();
-            if print_tasks_file(&entry, &name)? {
+    if let Ok(rd) = std::fs::read_dir(&projects_dir) {
+        let mut dirs: Vec<_> = rd.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect();
+        dirs.sort();
+        for d in dirs {
+            let tdir = d.join("tasks");
+            let active = active_tasks(&tdir)?;
+            if !active.is_empty() {
+                let name = d.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+                print_list(&name, &active);
                 any = true;
             }
         }
@@ -101,41 +89,89 @@ pub fn list(here: bool) -> Result<()> {
     Ok(())
 }
 
-fn print_tasks_file(file: &std::path::Path, name: &str) -> Result<bool> {
-    if !file.exists() {
-        return Ok(false);
+fn print_list(project: &str, active: &[(std::path::PathBuf, String)]) {
+    if active.is_empty() {
+        return;
     }
-    let content = std::fs::read_to_string(file)?;
-    let open: Vec<&str> = content
-        .lines()
-        .filter(|l| l.trim_start().starts_with("- [ ]"))
-        .collect();
-    if open.is_empty() {
-        return Ok(false);
+    println!("Project: {project}");
+    for (i, (_, title)) in active.iter().enumerate() {
+        println!("  [{}] {}", i + 1, title);
     }
-    println!("Project: {name}");
-    for (i, line) in open.iter().enumerate() {
-        let text = line.trim_start().trim_start_matches("- [ ]").trim();
-        println!("  [{}] {}", i + 1, text);
-    }
-    Ok(true)
 }
 
-/// Walk sederhana cari file .md (tanpa dependensi eksternal).
-fn walk_md(root: &std::path::Path) -> Vec<std::path::PathBuf> {
+/// Kumpulkan task aktif (status != done) dari sebuah folder tasks.
+fn active_tasks(dir: &std::path::Path) -> Result<Vec<(std::path::PathBuf, String)>> {
     let mut out = Vec::new();
-    let mut stack = vec![root.to_path_buf()];
-    while let Some(dir) = stack.pop() {
-        if let Ok(rd) = std::fs::read_dir(&dir) {
-            for e in rd.flatten() {
-                let path = e.path();
-                if path.is_dir() {
-                    stack.push(path);
-                } else if path.extension().map(|x| x == "md").unwrap_or(false) {
-                    out.push(path);
-                }
-            }
+    if !dir.exists() {
+        return Ok(out);
+    }
+    let mut entries: Vec<_> = std::fs::read_dir(dir)?
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().map(|x| x == "md").unwrap_or(false))
+        .collect();
+    entries.sort();
+    for path in entries {
+        let content = std::fs::read_to_string(&path).unwrap_or_default();
+        let status = frontmatter_value(&content, "status").unwrap_or_else(|| "todo".into());
+        if status != "done" {
+            let title = frontmatter_value(&content, "title")
+                .map(|t| t.trim_matches('"').to_string())
+                .unwrap_or_else(|| path.file_stem().unwrap().to_string_lossy().to_string());
+            out.push((path, title));
         }
+    }
+    Ok(out)
+}
+
+/// Ambil nilai field frontmatter sederhana (key: value) dari blok YAML pertama.
+fn frontmatter_value(content: &str, key: &str) -> Option<String> {
+    let mut lines = content.lines();
+    if lines.next()?.trim() != "---" {
+        return None;
+    }
+    for line in lines {
+        if line.trim() == "---" {
+            break;
+        }
+        if let Some(rest) = line.strip_prefix(&format!("{key}:")) {
+            return Some(rest.trim().to_string());
+        }
+    }
+    None
+}
+
+/// Set/ubah `status:` di frontmatter dan tambah `completed:` bila done.
+fn set_frontmatter_status(content: &str, status: &str, date: &str) -> String {
+    let mut out = String::new();
+    let mut in_fm = false;
+    let mut done_fm = false;
+    let mut status_written = false;
+    for (idx, line) in content.lines().enumerate() {
+        if idx == 0 && line.trim() == "---" {
+            in_fm = true;
+            out.push_str(line);
+            out.push('\n');
+            continue;
+        }
+        if in_fm && !done_fm && line.trim() == "---" {
+            if !status_written {
+                out.push_str(&format!("status: {status}\n"));
+            }
+            out.push_str(&format!("completed: {date}\n"));
+            out.push_str(line);
+            out.push('\n');
+            done_fm = true;
+            in_fm = false;
+            continue;
+        }
+        if in_fm && line.starts_with("status:") {
+            out.push_str(&format!("status: {status}\n"));
+            status_written = true;
+            continue;
+        }
+        out.push_str(line);
+        out.push('\n');
     }
     out
 }

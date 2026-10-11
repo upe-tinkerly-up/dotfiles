@@ -79,6 +79,12 @@ enum Command {
     },
     /// Statistik vault (dihitung dari file)
     Stats,
+    /// Daftar catatan menurut kategori
+    List {
+        /// Kategori: daily | wiki | notes | projects (default: daily)
+        #[arg(default_value = "daily")]
+        kind: String,
+    },
     /// Tampilkan path & konfigurasi yang dipakai
     Config,
     /// Panduan penggunaan & workflow lengkap
@@ -146,6 +152,7 @@ fn run() -> anyhow::Result<()> {
         Command::Pnotes => capture::pnotes_list(),
         Command::Search { query } => query::search(&query),
         Command::Stats => query::stats(),
+        Command::List { kind } => query::list(&kind),
         Command::Config => util::print_config(),
         Command::Guide => {
             util::print_guide();

@@ -103,6 +103,14 @@ fn render_templater_expr(expr: &str, vars: &HashMap<&str, String>) -> Option<Str
     None
 }
 
+/// Muat template bernama `<name>.md` dari folder Templates dan render dengan `vars`.
+/// Bila template tidak ada, kembalikan None (pemanggil sediakan fallback).
+pub fn load_template(name: &str, vars: &HashMap<&str, String>) -> Option<String> {
+    let path = templates_dir().join(format!("{name}.md"));
+    let tpl = std::fs::read_to_string(&path).ok()?;
+    Some(render_template(&tpl, vars))
+}
+
 /// Append teks ke file, buat file+parent bila belum ada.
 pub fn append_to_file(path: &std::path::Path, content: &str) -> Result<()> {
     use std::io::Write;
@@ -173,16 +181,16 @@ KONTEKS AI PER-PROJECT  (jalankan dari dalam folder kode project)
 ────────────────────────────────────────────────────────────────
 TASK PER-PROJECT  (dari dalam folder kode project)
 ────────────────────────────────────────────────────────────────
-  v task "judul"        Tambah task
-  v task done N         Tandai task nomor N selesai
-  v tasks --here        Task project ini  (alias: vt --here)
-  v tasks               Task semua project
-  ↳ Tulis ke: 10_Projects/<nama>/tasks.md  (checkbox markdown)
+  v task "judul"        Tambah task (1 task = 1 file dari template task.md)
+  v task done N         Tandai task nomor N selesai (ubah status frontmatter)
+  v tasks --here        Task aktif project ini  (alias: vt --here)
+  v tasks               Task aktif semua project
+  ↳ Tulis ke: 10_Projects/<nama>/tasks/<judul>.md
 
 ────────────────────────────────────────────────────────────────
 CATATAN BEBAS PROJECT  (dari dalam folder kode project)
 ────────────────────────────────────────────────────────────────
-  v pnote "judul" "isi" Catatan bebas (bukan untuk AI)
+  v pnote "judul" "isi" Catatan bebas (template project-note.md)
   v pnotes              Daftar catatan project ini
   ↳ Tulis ke: 10_Projects/<nama>/notes/<judul>.md
   ↳ Bisa juga ditulis langsung di Obsidian di folder yang sama.
@@ -190,17 +198,29 @@ CATATAN BEBAS PROJECT  (dari dalam folder kode project)
 ────────────────────────────────────────────────────────────────
 CAPTURE CEPAT  (dari mana saja)
 ────────────────────────────────────────────────────────────────
-  v daily "..."         Entri daily note     -> 00_Daily/YYYY-MM-DD.md
-  v wiki "Judul" "..."  Halaman wiki         -> 30_Resources/LLM_Wiki/
+  v daily "..."         Entri daily  (template daily-standup.md) -> 00_Daily/
+  v wiki "Judul" "..."  Halaman wiki (template wiki.md)          -> 30_Resources/LLM_Wiki/
   v note <path> "..."   Catatan bebas ke path PARA mana pun
 
 ────────────────────────────────────────────────────────────────
-QUERY & SINKRON
+MENAMPILKAN & MENCARI
 ────────────────────────────────────────────────────────────────
+  v list daily          Daftar daily notes
+  v list wiki           Daftar halaman wiki
+  v list notes          Daftar catatan bebas project
+  v list projects       Daftar project
   v search "kata"       Cari di seluruh vault (ripgrep)
   v stats               Statistik vault
-  v config              Path & project yang terdeteksi
+
+────────────────────────────────────────────────────────────────
+SINKRON & INFO
+────────────────────────────────────────────────────────────────
   vsync ["pesan"]       pull --rebase -> commit -> push vault ke git
+  v config              Path & project yang terdeteksi
+  v guide               Panduan ini
+
+CATATAN: semua catatan dibuat dari template di 30_Resources/Templates/.
+         Ubah template di sana → output v ikut berubah.
 
 ────────────────────────────────────────────────────────────────
 ALIAS PENDEK (zsh)

@@ -5,41 +5,23 @@
 //! `10_Projects/<nama>/_context.md` agar terbaca di Obsidian & tersinkron git.
 
 use crate::project::{self, Project};
-use crate::util::{append_to_file, write_file};
+use crate::util::{append_to_file, load_template, write_file};
 use anyhow::{Context, Result};
 use chrono::Local;
+use std::collections::HashMap;
 
-/// Template konteks AI — kerangka fleksibel, universal lintas jenis project.
-fn context_template(name: &str, date: &str) -> String {
-    format!(
-        "# AGENTS.md — {name}\n\
-         \n\
-         > Konteks persisten untuk asisten AI pada project **{name}**.\n\
-         > Diperbarui lewat `v ctx log \"...\"`. Dibaca oleh opencode/kiro/claude dsb.\n\
-         \n\
-         ## Ringkasan\n\
-         - Apa project ini, tujuan, stack utama.\n\
-         \n\
-         ## Arsitektur\n\
-         - Struktur & komponen penting.\n\
-         \n\
-         ## Keputusan\n\
-         - Keputusan desain penting beserta alasannya.\n\
-         \n\
-         ## Bug & Solusi\n\
-         - Catatan bug yang pernah diperbaiki + akar masalah.\n\
-         \n\
-         ## State Terkini\n\
-         - Sedang dikerjakan apa sekarang.\n\
-         \n\
-         ## Task Aktif\n\
-         - Lihat `tasks.md` (atau `v tasks --here`).\n\
-         \n\
-         ## Log Aktivitas\n\
-         _Entri otomatis dari `v ctx log`._\n\
-         \n\
-         - **{date}**: konteks diinisialisasi.\n"
-    )
+/// Konteks AI dari template `ai-context.md` (fallback ke kerangka internal bila template hilang).
+fn context_body(name: &str, date: &str) -> String {
+    let mut vars = HashMap::new();
+    vars.insert("PROJECT", name.to_string());
+    vars.insert("DATE", date.to_string());
+    vars.insert("TITLE", name.to_string());
+    load_template("ai-context", &vars).unwrap_or_else(|| {
+        format!(
+            "# AGENTS.md — {name}\n\n> Konteks AI project {name}.\n\n\
+             ## Log Aktivitas\n- **{date}**: konteks diinisialisasi.\n"
+        )
+    })
 }
 
 /// Inisialisasi konteks untuk project saat ini bila belum ada.
@@ -50,7 +32,7 @@ pub fn init() -> Result<Project> {
     let agents = p.agents_file();
 
     if !agents.exists() {
-        let body = context_template(&p.name, &date);
+        let body = context_body(&p.name, &date);
         write_file(&agents, &body)?;
         println!("✓ dibuat {}", agents.display());
     }

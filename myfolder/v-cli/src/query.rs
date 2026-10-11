@@ -126,3 +126,90 @@ fn walk_md(root: &std::path::Path) -> Vec<std::path::PathBuf> {
     }
     out
 }
+
+/// Daftar catatan menurut kategori: daily | wiki | notes | projects.
+pub fn list(kind: &str) -> Result<()> {
+    let root = vault_root();
+    match kind {
+        "daily" => {
+            let dir = root.join("00_Daily");
+            println!("Daily notes (terbaru dulu):");
+            let mut files: Vec<_> = walk_md(&dir).into_iter().collect();
+            files.sort();
+            files.reverse();
+            if files.is_empty() {
+                println!("  (kosong)");
+            }
+            for f in files.iter().take(30) {
+                if let Some(name) = f.file_stem().and_then(|n| n.to_str()) {
+                    println!("  - {name}");
+                }
+            }
+        }
+        "wiki" => {
+            let dir = root.join("30_Resources/LLM_Wiki");
+            println!("Halaman wiki:");
+            let mut files = walk_md(&dir);
+            files.sort();
+            let meta = ["Index", "schema", "log", "README", "AGENT", "AGENTS"];
+            let mut any = false;
+            for f in &files {
+                if let Some(name) = f.file_stem().and_then(|n| n.to_str()) {
+                    if meta.contains(&name) {
+                        continue;
+                    }
+                    println!("  - {name}");
+                    any = true;
+                }
+            }
+            if !any {
+                println!("  (belum ada halaman wiki)");
+            }
+        }
+        "notes" => {
+            let projects = root.join("10_Projects");
+            println!("Catatan bebas project:");
+            let mut any = false;
+            if let Ok(rd) = std::fs::read_dir(&projects) {
+                let mut dirs: Vec<_> = rd.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect();
+                dirs.sort();
+                for d in dirs {
+                    let notes = d.join("notes");
+                    let files = walk_md(&notes);
+                    if !files.is_empty() {
+                        let pname = d.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+                        println!("  [{pname}]");
+                        let mut fs = files;
+                        fs.sort();
+                        for f in fs {
+                            if let Some(n) = f.file_stem().and_then(|x| x.to_str()) {
+                                println!("    - {n}");
+                            }
+                        }
+                        any = true;
+                    }
+                }
+            }
+            if !any {
+                println!("  (belum ada catatan project)");
+            }
+        }
+        "projects" => {
+            let projects = root.join("10_Projects");
+            println!("Projects:");
+            if let Ok(rd) = std::fs::read_dir(&projects) {
+                let mut dirs: Vec<_> = rd.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect();
+                dirs.sort();
+                for d in dirs {
+                    if let Some(n) = d.file_name().and_then(|x| x.to_str()) {
+                        println!("  - {n}");
+                    }
+                }
+            }
+        }
+        other => {
+            anyhow::bail!("kategori '{other}' tidak dikenal. Pilih: daily | wiki | notes | projects");
+        }
+    }
+    Ok(())
+}

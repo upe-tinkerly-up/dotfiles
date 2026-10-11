@@ -21,11 +21,6 @@ impl Project {
         self.vault_dir().join("_context.md")
     }
 
-    /// File task di vault.
-    pub fn vault_tasks_file(&self) -> PathBuf {
-        self.vault_dir().join("tasks.md")
-    }
-
     /// AGENTS.md di folder kode (sumber kebenaran konteks AI).
     pub fn agents_file(&self) -> PathBuf {
         self.code_dir.join("AGENTS.md")

@@ -48,10 +48,13 @@ pub fn wiki(title: &str, text: &str) -> Result<()> {
     let date = Local::now().format("%Y-%m-%d").to_string();
 
     if !file.exists() {
-        let body = format!(
-            "---\ntitle: \"{safe}\"\ntype: wiki\ntags: [llm]\nupdated: {date}\n---\n\n\
-             # {safe}\n\n> Ringkasan singkat.\n\n## Inti Konsep\n\n## Kaitan\n\n## Sumber\n"
-        );
+        let mut vars = HashMap::new();
+        vars.insert("TITLE", safe.clone());
+        vars.insert("DATE", date.clone());
+        vars.insert("TAG", "concept".to_string());
+        let body = crate::util::load_template("wiki", &vars).unwrap_or_else(|| {
+            format!("---\ntitle: \"{safe}\"\ntype: wiki\nupdated: {date}\n---\n\n# {safe}\n")
+        });
         write_file(&file, &body)?;
         println!("✓ dibuat halaman wiki {}", file.display());
     }
@@ -94,10 +97,14 @@ pub fn pnote(title: &str, text: &str) -> Result<()> {
     let date = Local::now().format("%Y-%m-%d %H:%M").to_string();
 
     if !file.exists() {
-        let body = format!(
-            "---\ntitle: \"{display}\"\ntype: project-note\nproject: {}\ncreated: {date}\n---\n\n# {display}\n\n",
-            p.name
-        );
+        let mut vars = HashMap::new();
+        vars.insert("TITLE", display.clone());
+        vars.insert("PROJECT", p.name.clone());
+        vars.insert("DATE", date.clone());
+        vars.insert("CONTENT", String::new());
+        let body = crate::util::load_template("project-note", &vars).unwrap_or_else(|| {
+            format!("---\ntitle: \"{display}\"\ntype: project-note\nproject: {}\ncreated: {date}\n---\n\n# {display}\n\n", p.name)
+        });
         write_file(&file, &body)?;
         println!("✓ dibuat catatan project {}", file.display());
     }
