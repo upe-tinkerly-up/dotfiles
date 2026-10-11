@@ -5,7 +5,7 @@ Wants=syncthing-inotify.service
 After=network.target
 
 [Service]
-Type=notify
+Type=simple
 ExecStart=/usr/bin/syncthing --no-browser --home=%h/.local/state/syncthing
 Restart=on-failure
 SuccessExitStatus=3 4
