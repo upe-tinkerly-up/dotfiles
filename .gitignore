@@ -1,2 +1,6 @@
 .hermes/
 dot_tmux_plugins/
+
+# Rust build artifacts (CLI v)
+myfolder/v-cli/target/
+myfolder/*/target/

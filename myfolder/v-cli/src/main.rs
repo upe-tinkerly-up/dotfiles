@@ -1,0 +1,134 @@
+//! `v` — File-first PARA vault CLI untuk alur konteks-AI-per-project.
+//!
+//! Semua perintah menulis langsung sebagai markdown ke struktur PARA di
+//! $V_VAULT (default ~/myfolder/obsidian-vault). Tidak ada database.
+
+mod util;
+mod project;
+mod ctx;
+mod task;
+mod capture;
+mod query;
+
+use clap::{Parser, Subcommand};
+
+#[derive(Parser)]
+#[command(
+    name = "v",
+    version,
+    about = "File-first PARA vault CLI (konteks AI per-project, daily, wiki, task, search)",
+    long_about = None
+)]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand)]
+enum Command {
+    /// Konteks AI per-project: tulis AGENTS.md di folder project + mirror ke vault 10_Projects/<nama>/
+    Ctx {
+        #[command(subcommand)]
+        action: Option<CtxAction>,
+    },
+    /// Task per-project (10_Projects/<nama>/tasks.md)
+    Task {
+        #[command(subcommand)]
+        action: Option<TaskAction>,
+        /// Shortcut: `v task "judul"` = tambah task
+        title: Option<String>,
+    },
+    /// Daftar task aktif (semua project atau project saat ini dengan --here)
+    Tasks {
+        /// Hanya task untuk project di direktori saat ini
+        #[arg(long)]
+        here: bool,
+    },
+    /// Daily note: append entri ke 00_Daily/YYYY-MM-DD.md
+    Daily {
+        /// Isi entri (opsional; tanpa isi hanya memastikan daily note hari ini ada)
+        text: Vec<String>,
+    },
+    /// Halaman wiki: buat/append 30_Resources/LLM_Wiki/<Judul>.md
+    Wiki {
+        /// Judul halaman
+        title: String,
+        /// Isi (opsional)
+        text: Vec<String>,
+    },
+    /// Catatan bebas ke path relatif terhadap vault
+    Note {
+        /// Path relatif dalam vault, mis. 20_Areas/Health/catatan.md
+        path: String,
+        /// Isi (opsional)
+        text: Vec<String>,
+    },
+    /// Cari di seluruh vault (pakai ripgrep bila ada, fallback ke pencarian internal)
+    Search {
+        /// Kata kunci
+        query: String,
+    },
+    /// Statistik vault (dihitung dari file)
+    Stats,
+    /// Tampilkan path & konfigurasi yang dipakai
+    Config,
+}
+
+#[derive(Subcommand)]
+enum CtxAction {
+    /// Tambah entri log bertimestamp ke konteks project
+    Log {
+        /// Isi log
+        text: Vec<String>,
+    },
+    /// Cetak konteks project (untuk di-feed ke AI)
+    Show,
+    /// Inisialisasi konteks untuk project saat ini (dipanggil otomatis bila belum ada)
+    Init,
+}
+
+#[derive(Subcommand)]
+enum TaskAction {
+    /// Tambah task baru
+    Add {
+        /// Judul task
+        title: Vec<String>,
+    },
+    /// Tandai task selesai berdasarkan nomor
+    Done {
+        /// Nomor task (lihat `v tasks`)
+        number: usize,
+    },
+}
+
+fn main() {
+    if let Err(e) = run() {
+        eprintln!("v: error: {e:#}");
+        std::process::exit(1);
+    }
+}
+
+fn run() -> anyhow::Result<()> {
+    let cli = Cli::parse();
+    match cli.command {
+        Command::Ctx { action } => match action {
+            None => ctx::show(),
+            Some(CtxAction::Init) => ctx::init().map(|_| ()),
+            Some(CtxAction::Show) => ctx::show(),
+            Some(CtxAction::Log { text }) => ctx::log(&text.join(" ")),
+        },
+        Command::Task { action, title } => match (action, title) {
+            (Some(TaskAction::Add { title }), _) => task::add(&title.join(" ")),
+            (Some(TaskAction::Done { number }), _) => task::done(number),
+            (None, Some(t)) => task::add(&t),
+            (None, None) => task::list(true),
+        },
+        Command::Tasks { here } => task::list(here),
+        Command::Daily { text } => capture::daily(&text.join(" ")),
+        Command::Wiki { title, text } => capture::wiki(&title, &text.join(" ")),
+        Command::Note { path, text } => capture::note(&path, &text.join(" ")),
+        Command::Search { query } => query::search(&query),
+        Command::Stats => query::stats(),
+        Command::Config => util::print_config(),
+    }
+}

@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Build & install CLI `v` saat source berubah. Dijalankan chezmoi saat `apply`.
+# Hash source di bawah memicu rebuild ketika salah satu file berubah:
+# main:    {{ include "myfolder/v-cli/src/main.rs" | sha256sum }}
+# util:    {{ include "myfolder/v-cli/src/util.rs" | sha256sum }}
+# project: {{ include "myfolder/v-cli/src/project.rs" | sha256sum }}
+# ctx:     {{ include "myfolder/v-cli/src/ctx.rs" | sha256sum }}
+# task:    {{ include "myfolder/v-cli/src/task.rs" | sha256sum }}
+# capture: {{ include "myfolder/v-cli/src/capture.rs" | sha256sum }}
+# query:   {{ include "myfolder/v-cli/src/query.rs" | sha256sum }}
+# cargo:   {{ include "myfolder/v-cli/Cargo.toml" | sha256sum }}
+set -euo pipefail
+
+SRC="$HOME/myfolder/v-cli"
+BIN_DIR="$HOME/.local/bin"
+
+if ! command -v cargo >/dev/null 2>&1; then
+  echo "[v-cli] cargo tidak ditemukan — lewati build (pasang Rust toolchain)." >&2
+  exit 0
+fi
+if [ ! -f "$SRC/Cargo.toml" ]; then
+  echo "[v-cli] source tidak ada di $SRC — lewati." >&2
+  exit 0
+fi
+
+echo "[v-cli] building release..."
+cargo build --release --manifest-path "$SRC/Cargo.toml"
+mkdir -p "$BIN_DIR"
+install -m 0755 "$SRC/target/release/v" "$BIN_DIR/v"
+echo "[v-cli] terpasang: $BIN_DIR/v ($("$BIN_DIR/v" --version))"

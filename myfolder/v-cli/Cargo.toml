@@ -1,0 +1,19 @@
+[package]
+name = "v"
+version = "0.1.0"
+edition = "2021"
+description = "File-first PARA vault CLI for AI-context-per-project workflows"
+
+[[bin]]
+name = "v"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+anyhow = "1"
+
+[profile.release]
+strip = true
+opt-level = "z"
+lto = true
