@@ -80,3 +80,59 @@ pub fn note(rel_path: &str, text: &str) -> Result<()> {
     }
     Ok(())
 }
+
+/// Catatan bebas project: 10_Projects/<nama>/notes/<judul>.md
+/// Dijalankan dari dalam folder project kode (deteksi via .git).
+pub fn pnote(title: &str, text: &str) -> Result<()> {
+    let p = crate::project::require()?;
+    let display = sanitize_filename(title);
+    if display.is_empty() {
+        anyhow::bail!("judul catatan kosong");
+    }
+    let slug = crate::util::slugify(title);
+    let file = p.vault_dir().join("notes").join(format!("{slug}.md"));
+    let date = Local::now().format("%Y-%m-%d %H:%M").to_string();
+
+    if !file.exists() {
+        let body = format!(
+            "---\ntitle: \"{display}\"\ntype: project-note\nproject: {}\ncreated: {date}\n---\n\n# {display}\n\n",
+            p.name
+        );
+        write_file(&file, &body)?;
+        println!("✓ dibuat catatan project {}", file.display());
+    }
+    if !text.trim().is_empty() {
+        append_to_file(&file, &format!("- **{date}**: {text}\n"))?;
+        println!("✓ isi ditambahkan ke '{display}' (project {})", p.name);
+    }
+    Ok(())
+}
+
+/// Daftar catatan bebas untuk project saat ini.
+pub fn pnotes_list() -> Result<()> {
+    let p = crate::project::require()?;
+    let dir = p.vault_dir().join("notes");
+    if !dir.exists() {
+        println!("(belum ada catatan untuk project {}. Buat dengan: v pnote \"judul\" \"isi\")", p.name);
+        return Ok(());
+    }
+    let mut found = false;
+    println!("Catatan project {}:", p.name);
+    if let Ok(rd) = std::fs::read_dir(&dir) {
+        let mut entries: Vec<_> = rd.flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().map(|x| x == "md").unwrap_or(false))
+            .collect();
+        entries.sort();
+        for path in entries {
+            if let Some(name) = path.file_stem().and_then(|n| n.to_str()) {
+                println!("  - {name}");
+                found = true;
+            }
+        }
+    }
+    if !found {
+        println!("  (kosong)");
+    }
+    Ok(())
+}

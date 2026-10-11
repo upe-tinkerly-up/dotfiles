@@ -63,6 +63,15 @@ enum Command {
         /// Isi (opsional)
         text: Vec<String>,
     },
+    /// Catatan bebas project: 10_Projects/<nama>/notes/<judul>.md (dari dalam folder project)
+    Pnote {
+        /// Judul catatan
+        title: String,
+        /// Isi (opsional; tanpa isi hanya membuat file catatan kosong)
+        text: Vec<String>,
+    },
+    /// Daftar catatan bebas untuk project saat ini
+    Pnotes,
     /// Cari di seluruh vault (pakai ripgrep bila ada, fallback ke pencarian internal)
     Search {
         /// Kata kunci
@@ -127,6 +136,8 @@ fn run() -> anyhow::Result<()> {
         Command::Daily { text } => capture::daily(&text.join(" ")),
         Command::Wiki { title, text } => capture::wiki(&title, &text.join(" ")),
         Command::Note { path, text } => capture::note(&path, &text.join(" ")),
+        Command::Pnote { title, text } => capture::pnote(&title, &text.join(" ")),
+        Command::Pnotes => capture::pnotes_list(),
         Command::Search { query } => query::search(&query),
         Command::Stats => query::stats(),
         Command::Config => util::print_config(),
