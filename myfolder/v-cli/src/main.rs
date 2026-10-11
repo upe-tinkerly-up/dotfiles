@@ -94,6 +94,9 @@ enum CtxAction {
     Show,
     /// Inisialisasi konteks untuk project saat ini (dipanggil otomatis bila belum ada)
     Init,
+    /// Tautkan AGENTS.md ke pintu masuk tool lain (CLAUDE.md, GEMINI.md, .kiro/steering, .hermes) via symlink.
+    /// Aman: tidak menimpa file yang sudah ada. Hanya di folder kode (Linux), tidak menyentuh vault.
+    Link,
 }
 
 #[derive(Subcommand)]
@@ -125,6 +128,7 @@ fn run() -> anyhow::Result<()> {
             Some(CtxAction::Init) => ctx::init().map(|_| ()),
             Some(CtxAction::Show) => ctx::show(),
             Some(CtxAction::Log { text }) => ctx::log(&text.join(" ")),
+            Some(CtxAction::Link) => ctx::link(),
         },
         Command::Task { action, title } => match (action, title) {
             (Some(TaskAction::Add { title }), _) => task::add(&title.join(" ")),

@@ -6,7 +6,7 @@
 
 use crate::project::{self, Project};
 use crate::util::{append_to_file, write_file};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::Local;
 
 /// Template konteks AI — kerangka fleksibel, universal lintas jenis project.
@@ -98,4 +98,67 @@ pub fn show() -> Result<()> {
     let content = std::fs::read_to_string(&agents)?;
     print!("{content}");
     Ok(())
+}
+
+/// Tautkan AGENTS.md ke pintu masuk tool lain via symlink (opt-in, aman).
+///
+/// Hanya di folder kode project (Linux-only). TIDAK pernah menyentuh vault,
+/// jadi git Windows pada vault tetap aman. Tidak menimpa file yang sudah ada.
+pub fn link() -> Result<()> {
+    let p = project::require()?;
+    let agents = p.agents_file();
+    if !agents.exists() {
+        init()?;
+    }
+
+    // Daftar target: (path relatif thd code_dir, target symlink relatif thd lokasi link)
+    // Target selalu menunjuk ke AGENTS.md di root project.
+    let single_file = [("CLAUDE.md", "AGENTS.md"), ("GEMINI.md", "AGENTS.md")];
+    let nested = [
+        (".kiro/steering/00-agents.md", "../../AGENTS.md"),
+        (".hermes/AGENTS.md", "../AGENTS.md"),
+    ];
+
+    let mut created = 0;
+    let mut skipped = 0;
+
+    for (link_rel, target) in single_file {
+        let link_path = p.code_dir.join(link_rel);
+        created += make_symlink(&link_path, std::path::Path::new(target), link_rel, &mut skipped)?;
+    }
+    for (link_rel, target) in nested {
+        let link_path = p.code_dir.join(link_rel);
+        if let Some(parent) = link_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        created += make_symlink(&link_path, std::path::Path::new(target), link_rel, &mut skipped)?;
+    }
+
+    println!(
+        "✓ ctx link project {}: {created} symlink dibuat, {skipped} dilewati (sudah ada).",
+        p.name
+    );
+    println!("  (symlink hanya di folder kode Linux; vault & git Windows tidak tersentuh)");
+    Ok(())
+}
+
+/// Buat symlink bila belum ada. Kembalikan 1 bila dibuat, 0 bila dilewati.
+/// Tidak menimpa file/symlink yang sudah ada (keamanan terhadap konteks nyata).
+fn make_symlink(
+    link_path: &std::path::Path,
+    target: &std::path::Path,
+    label: &str,
+    skipped: &mut i32,
+) -> Result<i32> {
+    use std::os::unix::fs::symlink;
+    // symlink_metadata: deteksi symlink/ file tanpa mengikuti target
+    if link_path.symlink_metadata().is_ok() {
+        println!("  - {label}: sudah ada, dilewati");
+        *skipped += 1;
+        return Ok(0);
+    }
+    symlink(target, link_path)
+        .with_context(|| format!("buat symlink {label}"))?;
+    println!("  - {label} -> {}", target.display());
+    Ok(1)
 }
