@@ -36,9 +36,24 @@ pub fn init() -> Result<Project> {
         write_file(&agents, &body)?;
         println!("✓ dibuat {}", agents.display());
     }
-    // Mirror ke vault
+    // Mirror ke vault + dashboard project (dari template, bila belum ada)
     mirror_to_vault(&p)?;
+    ensure_dashboard(&p)?;
     Ok(p)
+}
+
+/// Buat _dashboard.md project dari template project-dashboard.md bila belum ada.
+fn ensure_dashboard(p: &Project) -> Result<()> {
+    let dash = p.vault_dir().join("_dashboard.md");
+    if dash.exists() {
+        return Ok(());
+    }
+    let mut vars = HashMap::new();
+    vars.insert("PROJECT", crate::util::slugify(&p.name));
+    if let Some(body) = load_template("project-dashboard", &vars) {
+        write_file(&dash, &body)?;
+    }
+    Ok(())
 }
 
 /// Salin AGENTS.md -> vault _context.md (mirror satu arah: kode -> vault).
