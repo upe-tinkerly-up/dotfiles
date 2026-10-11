@@ -145,3 +145,82 @@ pub fn print_config() -> Result<()> {
     }
     Ok(())
 }
+
+/// Panduan penggunaan & workflow lengkap.
+pub fn print_guide() {
+    let g = r#"
+╔══════════════════════════════════════════════════════════════╗
+║  v — File-first PARA vault CLI                                 ║
+╚══════════════════════════════════════════════════════════════╝
+
+KONSEP
+  • Semua catatan = file markdown di vault PARA (~/myfolder/obsidian-vault).
+  • Tidak ada database. Obsidian & v menulis file yang sama.
+  • Konteks AI per-project hidup di folder KODE (AGENTS.md), di-mirror ke vault.
+  • Sinkron antar-device (Windows/HP/CachyOS) lewat git: `vsync`.
+
+────────────────────────────────────────────────────────────────
+KONTEKS AI PER-PROJECT  (jalankan dari dalam folder kode project)
+────────────────────────────────────────────────────────────────
+  v ctx                 Tampilkan konteks project ini
+  v ctx init            Buat AGENTS.md awal (otomatis bila belum ada)
+  v ctx log "..."       Tambah entri log (keputusan, bug, progress)
+  v ctx show            Cetak konteks (untuk di-feed ke AI)
+  v ctx link            Tautkan AGENTS.md -> CLAUDE.md/GEMINI.md/.kiro/.hermes
+                        (symlink, aman, tak menimpa file yang ada)
+  ↳ Tulis ke: <project>/AGENTS.md  +  mirror 10_Projects/<nama>/_context.md
+
+────────────────────────────────────────────────────────────────
+TASK PER-PROJECT  (dari dalam folder kode project)
+────────────────────────────────────────────────────────────────
+  v task "judul"        Tambah task
+  v task done N         Tandai task nomor N selesai
+  v tasks --here        Task project ini  (alias: vt --here)
+  v tasks               Task semua project
+  ↳ Tulis ke: 10_Projects/<nama>/tasks.md  (checkbox markdown)
+
+────────────────────────────────────────────────────────────────
+CATATAN BEBAS PROJECT  (dari dalam folder kode project)
+────────────────────────────────────────────────────────────────
+  v pnote "judul" "isi" Catatan bebas (bukan untuk AI)
+  v pnotes              Daftar catatan project ini
+  ↳ Tulis ke: 10_Projects/<nama>/notes/<judul>.md
+  ↳ Bisa juga ditulis langsung di Obsidian di folder yang sama.
+
+────────────────────────────────────────────────────────────────
+CAPTURE CEPAT  (dari mana saja)
+────────────────────────────────────────────────────────────────
+  v daily "..."         Entri daily note     -> 00_Daily/YYYY-MM-DD.md
+  v wiki "Judul" "..."  Halaman wiki         -> 30_Resources/LLM_Wiki/
+  v note <path> "..."   Catatan bebas ke path PARA mana pun
+
+────────────────────────────────────────────────────────────────
+QUERY & SINKRON
+────────────────────────────────────────────────────────────────
+  v search "kata"       Cari di seluruh vault (ripgrep)
+  v stats               Statistik vault
+  v config              Path & project yang terdeteksi
+  vsync ["pesan"]       pull --rebase -> commit -> push vault ke git
+
+────────────────────────────────────────────────────────────────
+ALIAS PENDEK (zsh)
+────────────────────────────────────────────────────────────────
+  vc=v ctx   vt=v tasks   vs=v search   vd=v daily   vw=v wiki   vst=v stats
+
+════════════════════════════════════════════════════════════════
+CONTOH WORKFLOW: vibe-coding project "avinet" dengan AI
+════════════════════════════════════════════════════════════════
+  cd ~/myfolder/work/avinet        # masuk folder kode project
+  v ctx link                       # (sekali) tautkan ke semua AI tool
+  v ctx log "mulai: refactor auth" # catat konteks
+  # ... ngoding dengan kiro/opencode/claude (mereka baca AGENTS.md) ...
+  v ctx log "fixed: token refresh race, pakai mutex"
+  v task "tulis test auth"         # catat task
+  v task done 1                    # selesaikan task
+  v pnote "meeting" "deadline Q4"  # catatan bebas
+  vsync "update avinet context"    # sinkron ke Obsidian Windows/HP/CachyOS
+
+Jalankan `v <perintah> --help` untuk detail tiap perintah.
+"#;
+    println!("{g}");
+}

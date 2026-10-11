@@ -81,6 +81,8 @@ enum Command {
     Stats,
     /// Tampilkan path & konfigurasi yang dipakai
     Config,
+    /// Panduan penggunaan & workflow lengkap
+    Guide,
 }
 
 #[derive(Subcommand)]
@@ -145,5 +147,9 @@ fn run() -> anyhow::Result<()> {
         Command::Search { query } => query::search(&query),
         Command::Stats => query::stats(),
         Command::Config => util::print_config(),
+        Command::Guide => {
+            util::print_guide();
+            Ok(())
+        }
     }
 }
