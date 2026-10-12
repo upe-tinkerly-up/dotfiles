@@ -100,6 +100,10 @@ fn render_templater_expr(expr: &str, vars: &HashMap<&str, String>) -> Option<Str
     if e.starts_with("tp.file.title") {
         return vars.get("TITLE").cloned();
     }
+    // tp.file.folder() / tp.file.folder(true) -> nama project (folder) bila tersedia
+    if e.starts_with("tp.file.folder") {
+        return vars.get("PROJECT").or_else(|| vars.get("FOLDER")).cloned();
+    }
     None
 }
 
