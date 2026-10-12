@@ -119,11 +119,11 @@ enum TaskAction {
         /// Nomor task (lihat `v tasks`)
         number: usize,
     },
-    /// Tambah subtask ke task nomor N (checklist di dalam callout `## Subtask`)
+    /// Tambah subtask ke task. Tanpa argumen = mode interaktif (pilih task + ketik judul).
     Sub {
-        /// Nomor task (lihat `v tasks --here`)
-        number: usize,
-        /// Judul subtask
+        /// Nomor task (opsional; lihat `v tasks --here`). Kosongkan untuk mode interaktif.
+        number: Option<usize>,
+        /// Judul subtask (opsional saat interaktif)
         title: Vec<String>,
     },
     /// Centang subtask ke-M pada task nomor N

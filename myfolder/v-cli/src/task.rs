@@ -75,17 +75,90 @@ fn resolve_active(number: usize) -> Result<(std::path::PathBuf, String)> {
         .ok_or_else(|| anyhow::anyhow!("task nomor {number} tidak ditemukan (lihat `v tasks --here`)"))
 }
 
-/// Tambah subtask ke task #N (ke dalam callout `## Subtask`).
-pub fn sub_add(number: usize, title: &str) -> Result<()> {
-    if title.trim().is_empty() {
-        anyhow::bail!("judul subtask kosong. Pakai: v task sub <N> \"judul\"");
+/// Tambah subtask ke task (ke dalam callout `## Subtask`).
+///
+/// - `number` = Some(N): langsung ke task #N (non-interaktif).
+/// - `number` = None: mode interaktif — tampilkan daftar task aktif, minta pilih.
+///   Bila hanya ada 1 task, langsung dipakai tanpa bertanya.
+/// - `title` kosong: minta judul subtask lewat prompt.
+pub fn sub_add(number: Option<usize>, title: &str) -> Result<()> {
+    let p = project::require()?;
+    let active = active_tasks(&tasks_dir(&p))?;
+    if active.is_empty() {
+        anyhow::bail!("belum ada task aktif di project '{}'. Buat dulu: v task \"judul\"", p.name);
     }
-    let (path, task_title) = resolve_active(number)?;
+
+    // Tentukan task target.
+    let idx = match number {
+        Some(n) => {
+            if n == 0 || n > active.len() {
+                anyhow::bail!("task nomor {n} tidak ada (lihat `v tasks --here`)");
+            }
+            n - 1
+        }
+        None => {
+            if active.len() == 1 {
+                0
+            } else {
+                // Interaktif: tampilkan daftar lalu minta pilih.
+                println!("Pilih task di project '{}':", p.name);
+                for (i, (path, t)) in active.iter().enumerate() {
+                    let subs = parse_subtasks(&std::fs::read_to_string(path).unwrap_or_default());
+                    let done = subs.iter().filter(|s| s.done).count();
+                    if subs.is_empty() {
+                        println!("  [{}] {}", i + 1, t);
+                    } else {
+                        println!("  [{}] {}  ({}/{})", i + 1, t, done, subs.len());
+                    }
+                }
+                let n = prompt_number(&format!("Nomor task [1-{}]: ", active.len()), active.len())?;
+                n - 1
+            }
+        }
+    };
+
+    let (path, task_title) = active[idx].clone();
+
+    // Tentukan judul subtask (argumen atau prompt interaktif).
+    let sub_title = if title.trim().is_empty() {
+        prompt_line("Judul subtask: ")?
+    } else {
+        title.trim().to_string()
+    };
+    if sub_title.trim().is_empty() {
+        anyhow::bail!("judul subtask kosong — dibatalkan.");
+    }
+
     let content = std::fs::read_to_string(&path)?;
-    let new = insert_subtask(&content, title.trim());
+    let new = insert_subtask(&content, sub_title.trim());
     write_file(&path, &new)?;
-    println!("✓ subtask ditambah ke [{number}] {task_title}: {title}");
+    println!(
+        "✓ subtask ditambah ke [{}] {task_title}: {sub_title}",
+        idx + 1
+    );
     Ok(())
+}
+
+/// Baca satu baris dari stdin (dengan prompt), trim newline.
+fn prompt_line(prompt: &str) -> Result<String> {
+    use std::io::Write;
+    print!("{prompt}");
+    std::io::stdout().flush().ok();
+    let mut buf = String::new();
+    std::io::stdin().read_line(&mut buf)?;
+    Ok(buf.trim().to_string())
+}
+
+/// Minta angka 1..=max dari stdin, ulangi bila tidak valid.
+fn prompt_number(prompt: &str, max: usize) -> Result<usize> {
+    for _ in 0..5 {
+        let s = prompt_line(prompt)?;
+        match s.parse::<usize>() {
+            Ok(n) if n >= 1 && n <= max => return Ok(n),
+            _ => eprintln!("  (masukkan angka 1-{max})"),
+        }
+    }
+    anyhow::bail!("input tidak valid — dibatalkan.")
 }
 
 /// Centang subtask ke-M pada task #N (- [ ] -> - [x]).
