@@ -119,6 +119,25 @@ enum TaskAction {
         /// Nomor task (lihat `v tasks`)
         number: usize,
     },
+    /// Tambah subtask ke task nomor N (checklist di dalam callout `## Subtask`)
+    Sub {
+        /// Nomor task (lihat `v tasks --here`)
+        number: usize,
+        /// Judul subtask
+        title: Vec<String>,
+    },
+    /// Centang subtask ke-M pada task nomor N
+    SubDone {
+        /// Nomor task (lihat `v tasks --here`)
+        number: usize,
+        /// Nomor subtask (lihat `v task show N`)
+        sub: usize,
+    },
+    /// Tampilkan detail task nomor N + daftar subtask + progress
+    Show {
+        /// Nomor task (lihat `v tasks --here`)
+        number: usize,
+    },
 }
 
 fn main() {
@@ -141,6 +160,9 @@ fn run() -> anyhow::Result<()> {
         Command::Task { action, title } => match (action, title) {
             (Some(TaskAction::Add { title }), _) => task::add(&title.join(" ")),
             (Some(TaskAction::Done { number }), _) => task::done(number),
+            (Some(TaskAction::Sub { number, title }), _) => task::sub_add(number, &title.join(" ")),
+            (Some(TaskAction::SubDone { number, sub }), _) => task::sub_done(number, sub),
+            (Some(TaskAction::Show { number }), _) => task::show(number),
             (None, Some(t)) => task::add(&t),
             (None, None) => task::list(true),
         },
