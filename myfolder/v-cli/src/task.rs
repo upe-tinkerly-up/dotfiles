@@ -26,12 +26,12 @@ pub fn add(title: &str) -> Result<()> {
         anyhow::bail!("judul task kosong. Pakai: v task \"judul\"");
     }
     let p = project::require()?;
+    let date = Local::now().format("%Y-%m-%d").to_string();
     let slug = slugify(title);
-    let file = tasks_dir(&p).join(format!("{slug}.md"));
+    let file = tasks_dir(&p).join(format!("{date}-{slug}.md"));
     if file.exists() {
         anyhow::bail!("task '{title}' sudah ada: {}", file.display());
     }
-    let date = Local::now().format("%Y-%m-%d").to_string();
     let mut vars = HashMap::new();
     vars.insert("TITLE", title.to_string());
     vars.insert("PROJECT", p.name.clone());
