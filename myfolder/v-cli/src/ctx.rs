@@ -147,15 +147,22 @@ fn make_symlink(
     label: &str,
     skipped: &mut i32,
 ) -> Result<i32> {
-    use std::os::unix::fs::symlink;
     // symlink_metadata: deteksi symlink/ file tanpa mengikuti target
     if link_path.symlink_metadata().is_ok() {
         println!("  - {label}: sudah ada, dilewati");
         *skipped += 1;
         return Ok(0);
     }
-    symlink(target, link_path)
-        .with_context(|| format!("buat symlink {label}"))?;
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(target, link_path)
+            .with_context(|| format!("buat symlink {label}"))?;
+    }
+    #[cfg(windows)]
+    {
+        std::os::windows::fs::symlink_file(target, link_path)
+            .with_context(|| format!("buat symlink {label} (butuh Developer Mode / hak admin di Windows)"))?;
+    }
     println!("  - {label} -> {}", target.display());
     Ok(1)
 }
