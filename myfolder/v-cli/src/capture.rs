@@ -93,23 +93,26 @@ pub fn pnote(title: &str, text: &str) -> Result<()> {
         anyhow::bail!("judul catatan kosong");
     }
     let slug = crate::util::slugify(title);
-    let file = p.vault_dir().join("notes").join(format!("{slug}.md"));
-    let date = Local::now().format("%Y-%m-%d %H:%M").to_string();
+    let date_slug = Local::now().format("%Y-%m-%d").to_string();
+    let file = p.vault_dir().join("notes").join(format!("{date_slug}-{slug}.md"));
+    let date_full = Local::now().format("%Y-%m-%d %H:%M").to_string();
+    let date = Local::now().format("%Y-%m-%d").to_string();
 
     if !file.exists() {
-        let mut vars = HashMap::new();
-        vars.insert("TITLE", display.clone());
-        vars.insert("PROJECT", p.name.clone());
-        vars.insert("DATE", date.clone());
-        vars.insert("CONTENT", String::new());
-        let body = crate::util::load_template("project-note", &vars).unwrap_or_else(|| {
-            format!("---\ntitle: \"{display}\"\ntype: project-note\nproject: {}\ncreated: {date}\n---\n\n# {display}\n\n", p.name)
-        });
+        // Catatan: template `project-note.md` di vault memakai JS Templater (khusus Obsidian),
+        // jadi CLI TIDAK memuatnya (akan bocor mentah). CLI pakai body bawaan di bawah —
+        // properties detail + tag project, konsisten dengan hasil Obsidian.
+        let body = format!(
+            "---\ntitle: \"{display}\"\ntype: project-note\nproject: \"{proj}\"\nstatus: aktif\ncreated: \"{date}\"\nupdated: \"{date}\"\naliases: []\ntags:\n  - note\n  - {proj}\n---\n\n> [!info] {display}\n> Project: **{proj}** · Dibuat: {date}\n\n# {display}\n\n## 📌 Ringkasan\n- \n\n## 📝 Catatan\n- \n\n## 🔗 Terkait\n- \n",
+            display = display,
+            proj = p.name,
+            date = date
+        );
         write_file(&file, &body)?;
         println!("✓ dibuat catatan project {}", file.display());
     }
     if !text.trim().is_empty() {
-        append_to_file(&file, &format!("- **{date}**: {text}\n"))?;
+        append_to_file(&file, &format!("- **{date_full}**: {text}\n"))?;
         println!("✓ isi ditambahkan ke '{display}' (project {})", p.name);
     }
     Ok(())
