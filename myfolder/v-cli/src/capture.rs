@@ -42,19 +42,18 @@ pub fn daily(text: &str) -> Result<()> {
 /// append isi bila ada.
 pub fn wiki(title: &str, text: &str) -> Result<()> {
     let safe = sanitize_filename(title);
+    let date = Local::now().format("%Y-%m-%d").to_string();
+    let slug = crate::util::slugify(title);
     let file = vault_root()
         .join("30_Resources/LLM_Wiki")
-        .join(format!("{safe}.md"));
-    let date = Local::now().format("%Y-%m-%d").to_string();
+        .join(format!("{date}-{slug}.md"));
 
     if !file.exists() {
-        let mut vars = HashMap::new();
-        vars.insert("TITLE", safe.clone());
-        vars.insert("DATE", date.clone());
-        vars.insert("TAG", "concept".to_string());
-        let body = crate::util::load_template("wiki", &vars).unwrap_or_else(|| {
-            format!("---\ntitle: \"{safe}\"\ntype: wiki\nupdated: {date}\n---\n\n# {safe}\n")
-        });
+        // Template `wiki.md` di vault memakai JS Templater (khusus Obsidian) — CLI TIDAK memuatnya.
+        // CLI pakai body bawaan di bawah (properties detail, tanpa JS).
+        let body = format!(
+            "---\ntitle: \"{safe}\"\ntype: wiki\nstatus: aktif\ncreated: \"{date}\"\nupdated: \"{date}\"\naliases: []\ntags:\n  - llm\n  - wiki\n  - concept\n---\n\n> [!note] {safe}\n> Ringkasan 1–2 kalimat: apa ini & kenapa penting. · Dibuat: {date}\n\n# {safe}\n\n## 🧠 Inti Konsep\n- \n\n## 📑 Detail\n- \n\n## 🔗 Kaitan\n- \n\n## 📎 Sumber\n- \n"
+        );
         write_file(&file, &body)?;
         println!("✓ dibuat halaman wiki {}", file.display());
     }
