@@ -1,11 +1,8 @@
 //! Capture cepat: daily note, halaman wiki, catatan bebas.
 
-use crate::util::{
-    append_to_file, render_template, sanitize_filename, templates_dir, vault_root, write_file,
-};
+use crate::util::{append_to_file, sanitize_filename, vault_root, write_file};
 use anyhow::Result;
 use chrono::Local;
-use std::collections::HashMap;
 
 /// Daily note: 00_Daily/YYYY-MM-DD.md. Buat dari template daily-standup.md bila belum ada,
 /// lalu append entri bertimestamp bila ada teks.
@@ -16,16 +13,29 @@ pub fn daily(text: &str) -> Result<()> {
     let file = vault_root().join("00_Daily").join(format!("{date}.md"));
 
     if !file.exists() {
-        let tpl_path = templates_dir().join("daily-standup.md");
-        let body = if tpl_path.exists() {
-            let tpl = std::fs::read_to_string(&tpl_path)?;
-            let mut vars = HashMap::new();
-            vars.insert("DATE", date.clone());
-            vars.insert("TIME", time.clone());
-            render_template(&tpl, &vars)
-        } else {
-            format!("# {date}\n\n## Work Log\n")
+        // CLI pakai body inline terisi penuh (tanggal langsung diisi), BUKAN template
+        // Obsidian yang pakai sintaks core {{date}}. Dengan begitu daily dari CLI dan
+        // dari Calendar/Daily Notes sama-sama terisi benar (lihat PKM: Opsi X).
+        use chrono::Datelike;
+        let prev = (now - chrono::Duration::days(1)).format("%Y-%m-%d").to_string();
+        let next = (now + chrono::Duration::days(1)).format("%Y-%m-%d").to_string();
+        let hari = match now.weekday() {
+            chrono::Weekday::Mon => "Senin",
+            chrono::Weekday::Tue => "Selasa",
+            chrono::Weekday::Wed => "Rabu",
+            chrono::Weekday::Thu => "Kamis",
+            chrono::Weekday::Fri => "Jumat",
+            chrono::Weekday::Sat => "Sabtu",
+            chrono::Weekday::Sun => "Minggu",
         };
+        let bulan = [
+            "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus",
+            "September", "Oktober", "November", "Desember",
+        ][(now.month() - 1) as usize];
+        let judul = format!("{hari}, {:02} {bulan} {}", now.day(), now.year());
+        let body = format!(
+            "---\ndate: \"{date}\"\ntype: daily\ntags:\n  - daily\ntasks_done: 0\n---\n# 📅 {judul}\n\n> [!tip]- Navigasi\n> ⬅️ [[{prev}|Kemarin]] · [[{next}|Besok]] ➡️ · 🗂️ [[Board|Board nego-frontend]] · 📊 [[Dashboard]]\n\n## 🎯 Task Hari Ini\n> Tarik dari Board (kolom Todo / In Progress). Centang saat selesai.\n\n- [ ] \n- [ ] \n- [ ] \n\n## 🕒 Work Log\n- \n\n## 📝 Catatan & Insight\n- \n\n## 🔄 Refleksi\n- **Selesai hari ini:** \n- **Belum selesai → besok:** \n- **Blocker:** \n"
+        );
         write_file(&file, &body)?;
         println!("✓ dibuat daily note {}", file.display());
     }
