@@ -52,7 +52,7 @@ pub fn wiki(title: &str, text: &str) -> Result<()> {
         // Template `wiki.md` di vault memakai JS Templater (khusus Obsidian) — CLI TIDAK memuatnya.
         // CLI pakai body bawaan di bawah (properties detail, tanpa JS).
         let body = format!(
-            "---\ntitle: \"{safe}\"\ntype: wiki\nstatus: aktif\ncreated: \"{date}\"\nupdated: \"{date}\"\naliases: []\ntags:\n  - llm\n  - wiki\n  - concept\n---\n\n> [!note] {safe}\n> Ringkasan 1–2 kalimat: apa ini & kenapa penting. · Dibuat: {date}\n\n# {safe}\n\n## 🧠 Inti Konsep\n- \n\n## 📑 Detail\n- \n\n## 🔗 Kaitan\n- \n\n## 📎 Sumber\n- \n"
+            "---\ntitle: \"{safe}\"\ntype: wiki\ncreated: \"{date}\"\nupdated: \"{date}\"\naliases: []\ntags:\n  - wiki\n  - concept\n---\n\n> [!note] {safe}\n> Ringkasan 1–2 kalimat: apa ini & kenapa penting. · Dibuat: {date}\n\n# {safe}\n\n## 🧠 Inti Konsep\n- \n\n## 📑 Detail\n- \n\n## 🔗 Kaitan\n- \n\n## 📎 Sumber\n- \n"
         );
         write_file(&file, &body)?;
         println!("✓ dibuat halaman wiki {}", file.display());
@@ -102,7 +102,7 @@ pub fn pnote(title: &str, text: &str) -> Result<()> {
         // jadi CLI TIDAK memuatnya (akan bocor mentah). CLI pakai body bawaan di bawah —
         // properties detail + tag project, konsisten dengan hasil Obsidian.
         let body = format!(
-            "---\ntitle: \"{display}\"\ntype: project-note\nproject: \"{proj}\"\nstatus: aktif\ncreated: \"{date}\"\nupdated: \"{date}\"\naliases: []\ntags:\n  - note\n  - {proj}\n---\n\n> [!info] {display}\n> Project: **{proj}** · Dibuat: {date}\n\n# {display}\n\n## 📌 Ringkasan\n- \n\n## 📝 Catatan\n- \n\n## 🔗 Terkait\n- \n",
+            "---\ntitle: \"{display}\"\ntype: project-note\nproject: \"{proj}\"\ncreated: \"{date}\"\nupdated: \"{date}\"\naliases: []\ntags:\n  - note\n  - {proj}\n---\n\n> [!info] {display}\n> Project: **{proj}** · Dibuat: {date}\n\n# {display}\n\n## 📌 Ringkasan\n- \n\n## 📝 Catatan\n- \n\n## 🔗 Terkait\n- \n",
             display = display,
             proj = p.name,
             date = date

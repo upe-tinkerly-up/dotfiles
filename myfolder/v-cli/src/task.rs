@@ -42,7 +42,7 @@ pub fn add(title: &str) -> Result<()> {
     vars.insert("SUBCATEGORY", String::new());
 
     let body = load_template("task", &vars).unwrap_or_else(|| {
-        format!("---\ntitle: \"{title}\"\ntype: task\nproject: {}\nstatus: todo\ncreated: {date}\n---\n\n# {title}\n\n## Subtask\n> [!todo]- Checklist\n", p.name)
+        format!("---\ntitle: \"{title}\"\ntype: task\nproject: \"{proj}\"\nstatus: todo\npriority: 1\ncreated: \"{date}\"\nupdated: \"{date}\"\naliases: []\ntags:\n  - task\n  - {proj}\n---\n\n# {title}\n\n## Deskripsi\n\n\n## Subtask\n> [!todo]- Checklist\n> - [ ] \n\n## Status\n- [ ] Todo\n- [ ] In Progress\n- [ ] Done\n\n## Catatan\n- \n", proj = p.name)
     });
     write_file(&file, &body)?;
     println!("✓ task dibuat: {} ({})", title, file.display());
