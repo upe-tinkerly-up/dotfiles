@@ -186,10 +186,26 @@ KONTEKS AI PER-PROJECT  (jalankan dari dalam folder kode project)
 TASK PER-PROJECT  (dari dalam folder kode project)
 ────────────────────────────────────────────────────────────────
   v task "judul"        Tambah task (1 task = 1 file dari template task.md)
-  v task done N         Tandai task nomor N selesai (ubah status frontmatter)
+  v task sub N "judul"  Tambah subtask ke task #N (tanpa N = interaktif)
+  v task sub-done N M   Centang subtask M pada task N
+  v task done N         Tandai task N selesai (status -> done)
+  v task show N         Detail task N + progress subtask
   v tasks --here        Task aktif project ini  (alias: vt --here)
   v tasks               Task aktif semua project
-  ↳ Tulis ke: 10_Projects/<nama>/tasks/<judul>.md
+  ↳ Tulis ke: 10_Projects/<nama>/tasks/<tanggal>-<judul>.md
+  ↳ status: todo | active | done | archive  (sumber kebenaran = file task)
+
+────────────────────────────────────────────────────────────────
+KANBAN BOARD SYNC  (dari dalam folder kode project)
+────────────────────────────────────────────────────────────────
+  v board push          File task -> Board.md (subtask jadi card per lane)
+  v board pull          Board.md -> file task (setelah drag-drop di Obsidian)
+  v board sync          pull lalu push (rekonsiliasi dua arah)
+  ↳ Lane: 📥 Backlog(todo) · 🔨 In Progress(active) · ✅ Done · Archive
+  ↳ Auto-done: semua subtask [x] -> task status jadi done.
+  ↳ Archive bisa dibalikkan: drag card dari Archive -> lane lain, lalu pull.
+  ↳ Card bertanda [[...]] dikelola v; card manual tanpa [[...]] dibiarkan.
+  ↳ Blok %% kanban:settings %% (warna, dsb) selalu dipertahankan.
 
 ────────────────────────────────────────────────────────────────
 CATATAN BEBAS PROJECT  (dari dalam folder kode project)
