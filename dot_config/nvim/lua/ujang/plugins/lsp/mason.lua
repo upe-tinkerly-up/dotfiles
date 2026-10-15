@@ -18,7 +18,6 @@ return {
         -- "rust_analyzer",
         "gopls",
         "marksman",
-        "markdownlint-cli2",
       },
     },
     dependencies = {
@@ -52,6 +51,7 @@ return {
         "goimports", -- otomatis manage imports
         "golangci-lint", -- go linter
         "delve", -- go debugger (untuk DAP / neotest)
+        "markdownlint-cli2",
       },
     },
     dependencies = {
