@@ -7,7 +7,6 @@ mod util;
 mod project;
 mod ctx;
 mod task;
-mod board;
 mod capture;
 mod query;
 
@@ -32,7 +31,7 @@ enum Command {
         #[command(subcommand)]
         action: Option<CtxAction>,
     },
-    /// Task per-project (10_Projects/<nama>/tasks.md)
+    /// Task per-project (1 file per task di 10_Projects/<nama>/tasks/)
     Task {
         #[command(subcommand)]
         action: Option<TaskAction>,
@@ -44,11 +43,6 @@ enum Command {
         /// Hanya task untuk project di direktori saat ini
         #[arg(long)]
         here: bool,
-    },
-    /// Sinkronisasi Kanban Board.md ↔ file task (per project)
-    Board {
-        #[command(subcommand)]
-        action: BoardAction,
     },
     /// Daily note: append entri ke 00_Daily/YYYY-MM-DD.md
     Daily {
@@ -183,11 +177,6 @@ fn run() -> anyhow::Result<()> {
             (None, None) => task::list(true),
         },
         Command::Tasks { here } => task::list(here),
-        Command::Board { action } => match action {
-            BoardAction::Push => board::push(),
-            BoardAction::Pull => board::pull(),
-            BoardAction::Sync => board::sync(),
-        },
         Command::Daily { text } => capture::daily(&text.join(" ")),
         Command::Wiki { title, text } => capture::wiki(&title, &text.join(" ")),
         Command::Note { path, text } => capture::note(&path, &text.join(" ")),

@@ -193,19 +193,8 @@ TASK PER-PROJECT  (dari dalam folder kode project)
   v tasks --here        Task aktif project ini  (alias: vt --here)
   v tasks               Task aktif semua project
   ↳ Tulis ke: 10_Projects/<nama>/tasks/<tanggal>-<judul>.md
-  ↳ status: todo | active | done | archive  (sumber kebenaran = file task)
-
-────────────────────────────────────────────────────────────────
-KANBAN BOARD SYNC  (dari dalam folder kode project)
-────────────────────────────────────────────────────────────────
-  v board push          File task -> Board.md (subtask jadi card per lane)
-  v board pull          Board.md -> file task (setelah drag-drop di Obsidian)
-  v board sync          pull lalu push (rekonsiliasi dua arah)
-  ↳ Lane: 📥 Backlog(todo) · 🔨 In Progress(active) · ✅ Done · Archive
-  ↳ Auto-done: semua subtask [x] -> task status jadi done.
-  ↳ Archive bisa dibalikkan: drag card dari Archive -> lane lain, lalu pull.
-  ↳ Card bertanda [[...]] dikelola v; card manual tanpa [[...]] dibiarkan.
-  ↳ Blok %% kanban:settings %% (warna, dsb) selalu dipertahankan.
+  ↳ status via simbol checkbox subtask: [ ] todo · [/] progress · [x] done · [-] archive
+  ↳ Board drag-drop otomatis di Obsidian (plugin Tasks + Task List Kanban), tanpa CLI.
 
 ────────────────────────────────────────────────────────────────
 CATATAN BEBAS PROJECT  (dari dalam folder kode project)
